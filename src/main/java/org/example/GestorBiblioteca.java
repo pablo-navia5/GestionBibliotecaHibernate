@@ -6,7 +6,6 @@ import Entidades.Prestamo;
 import Entidades.Usuario;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
-import jakarta.persistence.NoResultException;
 import jakarta.persistence.TypedQuery;
 
 import java.time.LocalDate;
@@ -20,13 +19,14 @@ public class GestorBiblioteca {
     }
 
     private Usuario buscarUsuarioPorDni(EntityManager em, String dni) {
-        try {
-            TypedQuery<Usuario> query = em.createQuery("SELECT u FROM Usuario u WHERE u.dni = :dni", Usuario.class);
-            query.setParameter("dni", dni);
-            return query.getSingleResult();
-        } catch (NoResultException e) {
-            return null;
+        List<Usuario> usuarios = em.createQuery("SELECT u FROM Usuario u", Usuario.class).getResultList();
+
+        for (Usuario u : usuarios) {
+            if (u.getDni().equals(dni)) {
+                return u;
+            }
         }
+        return null;
     }
 
     public void registrarLibro(String isbn, String titulo, String autor) {
@@ -134,10 +134,17 @@ public class GestorBiblioteca {
             }
 
 
-            TypedQuery<Long> countQ = em.createQuery("SELECT count(p) FROM Prestamo p WHERE p.usuario.id = :uid AND p.fechaDevolucion IS NULL", Long.class);
-            countQ.setParameter("uid", usuario.getId());
-            if (countQ.getSingleResult() >= 3) {
-                System.out.println("Ya tienes 3 préstamos activos.");
+            List<Prestamo> prestamos = em.createQuery("SELECT p FROM Prestamo p", Prestamo.class).getResultList();
+            int prestamosActivos = 0;
+
+            for (Prestamo p : prestamos) {
+                if (p.getUsuario().getId().equals(usuario.getId()) && p.getFechaDevolucion() == null) {
+                    prestamosActivos++;
+                }
+            }
+
+            if (prestamosActivos >= 3) {
+                System.out.println("Ya tienes 3 préstamos activos no se pueden prestar mas.");
                 return;
             }
 
